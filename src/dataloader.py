@@ -2,12 +2,12 @@ from PIL import Image, ImageFont, ImageDraw
 import os
 import numpy as np
 import random
-from augmentations import RandomBgColor
-from augmentations import Compose
-
+from src.augmentations import RandomBgColor
+from src.augmentations import Compose
+from torch.utils.data import DataLoader, Dataset
 class DataGenerator:
 
-    def __init__(self, fonts_path, fonts, font_sizes, words_path, length, transforms):
+    def __init__(self, fonts_path, fonts, font_sizes, words_path, length, transforms, letters):
 
         with open(words_path) as f:
             self.words = f.read()
@@ -20,6 +20,12 @@ class DataGenerator:
         self.fonts = fonts
         self.font_sizes = font_sizes
         self.length = length
+        self.letters = letters
+
+        self.idx2char = dict(enumerate(self.letters, 1))
+        self.char2idx = {v:k for k,v in self.idx2char.items()}
+
+        self.OOV_idx = max(self.idx2char.keys())+1
 
         self.transforms = transforms
 
@@ -99,30 +105,44 @@ class DataGenerator:
         meta["length"] = length
 
         text, meta = self.generate_text(length, meta)
-
+        # print(text)
         image, meta = self.draw_image(font, text, meta)
 
-        return image, meta
+        return image, text, meta
 
     def __getitem__(self, idx):
-        image, meta = self.generate_clean_sample()
+        image, text, meta = self.generate_clean_sample()
         image, meta = self.transforms(image, meta)
-        return image.convert('RGB'), meta  
+        encoded_text = [self.char2idx.get(i, self.OOV_idx) for i in text]
+        return np.array(image.convert('RGB')), np.array(encoded_text), meta  
 
 
-def compose_aug(augmentation_config):
-    transforms = [aug["transform"](**aug["args"]) for aug in augmentation_config]
-    probs = [aug["prob"] for aug in augmentation_config]
 
-    return Compose(transforms, probs)
+class MyDataset(Dataset):
+
+    def __init__(self, data_config, augmentation_config):
+        self.img_transform = self.compose_aug(augmentation_config)
+        self.datagen = DataGenerator(**data_config, transforms=self.img_transform)
+
+    def compose_aug(self, augmentation_config):
+        transforms = [aug["transform"](**aug["args"]) for aug in augmentation_config["augmentations"]]
+        probs = [aug["prob"] for aug in augmentation_config["augmentations"]]
+
+        return Compose(transforms, probs)
+    
+    def __getitem__(self, idx):
+        image, text, meta = self.datagen[idx]
+
+        return (image-image.mean())/255, text
 
 if __name__ == '__main__':
 
-    from config import data_config, augmentation_config
+    from src.config import data_config, augmentation_config
     
-    transform = compose_aug(augmentation_config["augmentations"])
-    d = DataGenerator(**data_config, transforms=transform)
+
+    d = MyDataset(data_config, augmentation_config)
     for i in range(20):
-        image, meta = d[1]
-        image.save(f"output/{i:0>3}.png")
-    print(meta)
+        image, text = d[1]
+        # image.save(f"output/{i:0>3}.png")
+    # print(text)
+    # print("".join([d.datagen.idx2char[i] for i in text]))
