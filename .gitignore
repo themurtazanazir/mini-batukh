@@ -164,3 +164,4 @@ cython_debug/
 *exp*
 
 output/
+lightning_logs/

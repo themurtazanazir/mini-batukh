@@ -5,6 +5,7 @@ import random
 from src.augmentations import RandomBgColor
 from src.augmentations import Compose
 from torch.utils.data import DataLoader, Dataset
+from torchvision.transforms import ToTensor
 class DataGenerator:
 
     def __init__(self, fonts_path, fonts, font_sizes, words_path, length, transforms, letters):
@@ -110,11 +111,25 @@ class DataGenerator:
 
         return image, text, meta
 
+
+    def resize_and_pad_to_model_size(self, image):
+        w, h = image.size
+        image = image.resize((int(w/h*32), 32))
+        w, h = image.size
+        image = np.array(image)
+
+        ##!! Remove hard coded 800 value later
+        image = image[:, :800] # crop if longer
+        image = np.pad(image, ((0, 0), (800-w, 0), (0, 0)), constant_values=255)
+        return Image.fromarray(image)
+
     def __getitem__(self, idx):
         image, text, meta = self.generate_clean_sample()
         image, meta = self.transforms(image, meta)
+        image = image.convert('RGB')
+        image = self.resize_and_pad_to_model_size(image)
         encoded_text = [self.char2idx.get(i, self.OOV_idx) for i in text]
-        return np.array(image.convert('RGB')), np.array(encoded_text), meta  
+        return image, np.array(encoded_text), meta  
 
 
 
@@ -132,9 +147,14 @@ class MyDataset(Dataset):
     
     def __getitem__(self, idx):
         image, text, meta = self.datagen[idx]
+        image = ToTensor()(image)
+        return (image-image.mean())/255, text, len(text)
 
-        return (image-image.mean())/255, text
+    def __call__(self, batch_size, shuffle, pin_memory=True, n_workers=8):
+        return DataLoader(self, batch_size=batch_size, shuffle=shuffle, pin_memory=pin_memory, num_workers=n_workers)
 
+    def __len__(self):
+        return 212
 if __name__ == '__main__':
 
     from src.config import data_config, augmentation_config

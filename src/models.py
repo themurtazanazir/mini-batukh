@@ -56,17 +56,26 @@ class FinalModel(pl.LightningModule):
         return [optimizer], [lr_scheduler]
 
     def training_step(self, batch, batch_idx):
-        x, y = batch
+        x, y, target_len = batch
         y = torch.flatten(y)
         y_hat = self(x)
-        loss = F.ctc_loss(y_hat, y)
+        y_hat = torch.transpose(y_hat, 0, 1)
+        # print(y_hat.shape)
+        ##!! Remove hard coded value later
+        input_len = torch.full(size=(y_hat.shape[1],), fill_value=400, dtype=torch.long)
+        loss = F.ctc_loss(y_hat, y, input_lengths=input_len, target_lengths=target_len)
         return loss
 
     def validation_step(self, batch, batch_idx):
-        x, y = batch
+        x, y, target_len = batch
         y = torch.flatten(y)
         y_hat = self(x)
-        val_loss = F.ctc_loss(y_hat, y)
+        y_hat = torch.transpose(y_hat, 0, 1)
+
+        ##!! Remove hard coded value later
+        input_len = torch.full(size=(y_hat.shape[1],), fill_value=400, dtype=torch.long)
+        val_loss = F.ctc_loss(y_hat, y, input_lengths=input_len, target_lengths=target_len)
+
         self.log("val_loss", val_loss)
 
     def predict_step(self, batch, batch_idx):
