@@ -2,7 +2,7 @@ import torch
 from torch import nn
 from torch.nn import functional as F, Conv2d
 from torchvision.models import resnet50
-
+import pytorch_lightning as pl
 
 
 class Identity(nn.Module):
@@ -40,6 +40,39 @@ class ImgEncoder(nn.Module):
     def forward(self, x):
         return self._forward_impl(x)
 
+
+class FinalModel(pl.LightningModule):
+
+    def __init__(self):
+        super(FinalModel, self).__init__()
+        self.img_encoder = ImgEncoder()
+
+    def forward(self, x):
+        return self.img_encoder(x)
+
+    def configure_optimizers(self):
+        optimizer = torch.optim.Adam(self.parameters(), lr=1e-3)
+        lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=1)
+        return [optimizer], [lr_scheduler]
+
+    def training_step(self, batch, batch_idx):
+        x, y = batch
+        y = torch.flatten(y)
+        y_hat = self(x)
+        loss = F.ctc_loss(y_hat, y)
+        return loss
+
+    def validation_step(self, batch, batch_idx):
+        x, y = batch
+        y = torch.flatten(y)
+        y_hat = self(x)
+        val_loss = F.ctc_loss(y_hat, y)
+        self.log("val_loss", val_loss)
+
+    def predict_step(self, batch, batch_idx):
+        x, y = batch
+        pred = self(x)
+        return pred
 
 
 
