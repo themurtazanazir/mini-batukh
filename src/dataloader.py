@@ -2,13 +2,18 @@ from PIL import Image, ImageFont, ImageDraw
 import os
 import numpy as np
 import random
+
+import torch
 from src.augmentations import RandomBgColor
 from src.augmentations import Compose
 from torch.utils.data import DataLoader, Dataset
 from torchvision.transforms import ToTensor
+
+
 class DataGenerator:
 
-    def __init__(self, fonts_path, fonts, font_sizes, words_path, length, transforms, letters):
+    def __init__(self, fonts_path, fonts, font_sizes, words_path, length,
+                 transforms, letters, model_in_width, model_in_height):
 
         with open(words_path) as f:
             self.words = f.read()
@@ -16,7 +21,7 @@ class DataGenerator:
 
         self.words = self.words.replace(
             "\n\n", "\n").replace("  ", " ").split()
-
+        self.words = self.words[:5]
         self.fonts_path = fonts_path
         self.fonts = fonts
         self.font_sizes = font_sizes
@@ -24,11 +29,14 @@ class DataGenerator:
         self.letters = letters
 
         self.idx2char = dict(enumerate(self.letters, 1))
-        self.char2idx = {v:k for k,v in self.idx2char.items()}
+        self.char2idx = {v: k for k, v in self.idx2char.items()}
 
         self.OOV_idx = max(self.idx2char.keys())+1
 
         self.transforms = transforms
+
+        self.model_in_width = model_in_width
+        self.model_in_height = model_in_height
 
     def get_random_font(self, meta={}):
 
@@ -37,8 +45,12 @@ class DataGenerator:
         fontSize = random.randint(*self.font_sizes)
         meta['fontSize'] = fontSize
         # load the font and image
-        font = ImageFont.truetype(os.path.join(
-            self.fonts_path, fontFile), fontSize, layout_engine=ImageFont.LAYOUT_RAQM)
+        font = ImageFont.truetype(
+            os.path.join(self.fonts_path, fontFile),
+
+            fontSize,
+            layout_engine=ImageFont.LAYOUT_RAQM,
+        )
         return font, meta
 
     def generate_text(self, length, meta={}):
@@ -69,9 +81,11 @@ class DataGenerator:
     def draw_image(self, font, text, meta):
 
         w, h = font.getsize(text, direction='rtl')
-        w = int(w+(2*w))  # PIL gives wrong sizes at certain font sizes. just keeeping
-        h = int(h+(2*h))  # these large enough to almost always encompass the whole text
-        
+        # PIL gives wrong sizes at certain font sizes. just keeeping
+        w = int(w+(2*w))
+        # these large enough to almost always encompass the whole text
+        h = int(h+(2*h))
+
         r_color = random.randint(0, 120)
         g_color = max(0, r_color+random.randint(-10, 10))
         b_color = max(0, r_color+random.randint(-10, 10))
@@ -86,12 +100,8 @@ class DataGenerator:
                   font=font, fill=text_color, color=text_color, direction='rtl')
         draw = ImageDraw.Draw(image)
 
-
-
         padding_per = random.random()*0.05
         meta["padding_per"] = padding_per
-        
-
 
         image = self.crop_tight(image, padding_per)
         return image, meta
@@ -111,16 +121,18 @@ class DataGenerator:
 
         return image, text, meta
 
-
     def resize_and_pad_to_model_size(self, image):
         w, h = image.size
-        image = image.resize((int(w/h*32), 32))
+        image = image.resize(
+            (int(w/h*self.model_in_height), self.model_in_height))
         w, h = image.size
         image = np.array(image)
 
-        ##!! Remove hard coded 800 value later
-        image = image[:, :800] # crop if longer
-        image = np.pad(image, ((0, 0), (800-w, 0), (0, 0)), constant_values=255)
+        image = image[:, ::-1]  # crop if longer
+        image = image[:, :self.model_in_width]  # crop if longer
+        h, w = image.shape[:2]
+        image = np.pad(image, ((0, 0), (0, self.model_in_width-w), (0, 0)),
+                       constant_values=255)
         return Image.fromarray(image)
 
     def __getitem__(self, idx):
@@ -129,40 +141,58 @@ class DataGenerator:
         image = image.convert('RGB')
         image = self.resize_and_pad_to_model_size(image)
         encoded_text = [self.char2idx.get(i, self.OOV_idx) for i in text]
-        return image, np.array(encoded_text), meta  
-
+        return image, torch.tensor(encoded_text), meta
 
 
 class MyDataset(Dataset):
 
     def __init__(self, data_config, augmentation_config):
         self.img_transform = self.compose_aug(augmentation_config)
-        self.datagen = DataGenerator(**data_config, transforms=self.img_transform)
+        self.datagen = DataGenerator(
+            **data_config, transforms=self.img_transform)
 
     def compose_aug(self, augmentation_config):
-        transforms = [aug["transform"](**aug["args"]) for aug in augmentation_config["augmentations"]]
+        transforms = [aug["transform"](**aug["args"])
+                      for aug in augmentation_config["augmentations"]]
         probs = [aug["prob"] for aug in augmentation_config["augmentations"]]
 
         return Compose(transforms, probs)
-    
+
     def __getitem__(self, idx):
         image, text, meta = self.datagen[idx]
+        image.save(f"output/{idx}.png")
         image = ToTensor()(image)
         return (image-image.mean())/255, text, len(text)
 
     def __call__(self, batch_size, shuffle, pin_memory=True, n_workers=8):
-        return DataLoader(self, batch_size=batch_size, shuffle=shuffle, pin_memory=pin_memory, num_workers=n_workers)
+        return DataLoader(self, batch_size=batch_size, shuffle=shuffle,
+                          pin_memory=pin_memory, num_workers=n_workers,
+                          collate_fn=collate_fn,
+                          )
 
     def __len__(self):
-        return 212
+        return 21
+
+
+def collate_fn(data):
+    # print(len(data))
+    images, texts, text_lens = zip(*data)
+    images = torch.stack(images)
+    # print(texts)
+    texts = torch.cat(texts)
+    text_lens = torch.LongTensor(text_lens)
+
+    return images, texts, text_lens
+
+
 if __name__ == '__main__':
 
     from src.config import data_config, augmentation_config
-    
 
     d = MyDataset(data_config, augmentation_config)
-    for i in range(20):
-        image, text = d[1]
-        # image.save(f"output/{i:0>3}.png")
+    for img, text, text_len in d(batch_size=2, shuffle=False):
+        print(text, text_len)
+    print(d.datagen.letters)
+    # image.save(f"output/{i:0>3}.png")
     # print(text)
     # print("".join([d.datagen.idx2char[i] for i in text]))

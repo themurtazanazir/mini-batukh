@@ -5,11 +5,11 @@ from src.config import data_config, augmentation_config
 
 
 train_ds = MyDataset(data_config, augmentation_config)
-train_dl = train_ds(batch_size=1, shuffle=True)
+train_dl = train_ds(batch_size=1, shuffle=False)
 
 
-model = FinalModel()
+model = FinalModel(len(data_config["letters"])+1)
 
-trainer = pl.Trainer()
+trainer = pl.Trainer(max_steps=1000)
 trainer.fit(model, train_dl, )
 
