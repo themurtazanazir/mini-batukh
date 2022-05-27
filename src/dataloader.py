@@ -8,7 +8,7 @@ from src.augmentations import RandomBgColor
 from src.augmentations import Compose
 from torch.utils.data import DataLoader, Dataset
 from torchvision.transforms import ToTensor
-
+from torch.nn.utils.rnn import pad_sequence
 
 class DataGenerator:
 
@@ -18,15 +18,21 @@ class DataGenerator:
         with open(words_path) as f:
             self.words = f.read()
         self.words = self.words.strip()
-
+        # self.words = self.words[:5]
         self.words = self.words.replace(
             "\n\n", "\n").replace("  ", " ").split()
-        self.words = self.words[:5]
+        print("w", len(self.words))
+        self.words = self.words[10000+1000:10000+1004]
+        # self.words = self.words[:10000]
+        # self.words = self.words[10001:10004]
         self.fonts_path = fonts_path
         self.fonts = fonts
         self.font_sizes = font_sizes
         self.length = length
         self.letters = letters
+        # self.SOS = "<SOS>"
+        # self.EOS = "<EOS>"
+        # self.letters.extend([self.SOS, self.EOS])
 
         self.idx2char = dict(enumerate(self.letters, 1))
         self.char2idx = {v: k for k, v in self.idx2char.items()}
@@ -63,7 +69,11 @@ class DataGenerator:
 
     def crop_tight(self, image, padding_per=0.1):
         w, h = image.size
-        img = np.array(image)[:, :, :3]
+        try:
+            img = np.array(image)[:, :, :3]
+        except:
+            print(w, h)
+            raise
         vt, hz = np.where((img < 255).all(axis=-1))
 
         x0, y0, x1, y1 = (hz.min(), vt.min(), hz.max(), vt.max())
@@ -80,7 +90,11 @@ class DataGenerator:
 
     def draw_image(self, font, text, meta):
 
-        w, h = font.getsize(text, direction='rtl')
+        w, h = font.getsize(text)#, direction='rtl')
+        if w==0:
+            w = 1
+        if h==0:
+            h=1
         # PIL gives wrong sizes at certain font sizes. just keeeping
         w = int(w+(2*w))
         # these large enough to almost always encompass the whole text
@@ -114,8 +128,10 @@ class DataGenerator:
 
         length = random.randint(*self.length)
         meta["length"] = length
-
-        text, meta = self.generate_text(length, meta)
+        text = ''
+        while len(text)< 5:
+            text, meta = self.generate_text(length, meta)
+        # print("text is", text, len(text))
         # print(text)
         image, meta = self.draw_image(font, text, meta)
 
@@ -137,11 +153,16 @@ class DataGenerator:
 
     def __getitem__(self, idx):
         image, text, meta = self.generate_clean_sample()
+        # print(idx, text)
         image, meta = self.transforms(image, meta)
         image = image.convert('RGB')
         image = self.resize_and_pad_to_model_size(image)
+        # encoded_text = [self.char2idx[self.SOS]]+[self.char2idx.get(i, self.OOV_idx) for i in text]+[self.char2idx[self.EOS]]
         encoded_text = [self.char2idx.get(i, self.OOV_idx) for i in text]
         return image, torch.tensor(encoded_text), meta
+
+    def __len__(self):
+        return len(self.words)
 
 
 class MyDataset(Dataset):
@@ -167,22 +188,22 @@ class MyDataset(Dataset):
     def __call__(self, batch_size, shuffle, pin_memory=True, n_workers=8):
         return DataLoader(self, batch_size=batch_size, shuffle=shuffle,
                           pin_memory=pin_memory, num_workers=n_workers,
-                          collate_fn=collate_fn,
+                          collate_fn=self.collate_fn,
                           )
 
     def __len__(self):
-        return 21
+        return len(self.datagen)
 
 
-def collate_fn(data):
-    # print(len(data))
-    images, texts, text_lens = zip(*data)
-    images = torch.stack(images)
-    # print(texts)
-    texts = torch.cat(texts)
-    text_lens = torch.LongTensor(text_lens)
+    def collate_fn(self, data):
+        # print(len(data))
+        images, texts, text_lens = zip(*data)
+        images = torch.stack(images)
+        texts = torch.cat(texts).unsqueeze(0)
+        # texts = pad_sequence(texts, batch_first=True, padding_value=self.datagen.char2idx[self.datagen.EOS])
+        text_lens = torch.LongTensor(text_lens)
 
-    return images, texts, text_lens
+        return images, texts, text_lens
 
 
 if __name__ == '__main__':
@@ -190,9 +211,10 @@ if __name__ == '__main__':
     from src.config import data_config, augmentation_config
 
     d = MyDataset(data_config, augmentation_config)
-    for img, text, text_len in d(batch_size=2, shuffle=False):
+    for img, text, text_len in d(batch_size=1, shuffle=False):
         print(text, text_len)
-    print(d.datagen.letters)
+        break
+    # print(d.datagen.letters)
     # image.save(f"output/{i:0>3}.png")
     # print(text)
     # print("".join([d.datagen.idx2char[i] for i in text]))

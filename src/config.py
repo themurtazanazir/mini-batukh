@@ -1,9 +1,11 @@
 
+from typing import Any, Dict, AnyStr
 from src.augmentations import RandomPerespective, RandomRotate, RandomBgColor
 
-data_config = dict(
+data_config: Dict[str, Any] = dict(
     fonts_path="./fonts/",
     words_path="./data/input_data.txt",
+    # words_path="./data/input_data_eng.txt",
 
     fonts=[
         # "ARIBL0.ttf",
@@ -11,13 +13,19 @@ data_config = dict(
         # "Gulmarg Nastaleeq-8.11.2013.ttf",
     ],
 
-    font_sizes=(30, 61),
+    font_sizes=(32, 61),
 
-    length=(1, 3),
+    length=(1, 2),
 
     letters=['ص', '(', 'ژ', 'ِ', 'ۄ', 'ٍ', 'ز', 'ڑ', 'ء', 'ة', '¿', '’', ':', 'س', 'ٛ', 'ق', '۵', 'ٸ', ' ', 'ج', 'غ', '&', 'ێ', '‘', 'م', '۰', '۲', 'ر', '٠', 'پ', '#', 'ً', 'ۯ', 'ع', 'ذ', '۳', 'ا', 'ﺅ', 'خ', 'ث', '/', '۱', 'ٚ', 'ط', '"', '٘', '۹', 'ٲ', '۪', 'ح', 'ۂ', 'ہ', 'ٰ', '”', 'ھ', 'ٗ', 'ے', '۶',
              'ٓ', "'", 'ب', 'ٔ', 'ؑ', 'و', '\ufeff', '.', 'ی', 'ٹ', 'ل', 'ۆ', '\x81', 'ۭ', 'ّ', 'ۅ', 'د', ')', 'ؐ', 'ٖ', 'ُ', '>', 'ت', 'ض', '۸', ',', 'ن', 'ئ', 'ظ', 'ں', '،', 'ؓ', 'ڈ', '۔', 'ف', '۴', 'گ', '\xad', 'ؒ', 'ۍ', 'ـ', '؟', 'ک', '٭', 'آ', 'ٮ', '\u200e', 'ٕ', '̡', '!', 'ش', 'َ', '۷', 'ؔ', 'چ', '؛', '='],
+    
+    
     # letters = ['M', 'n', 'a', ' ', 'm', 'i', 's', 'y', 'd', 'e'],
+    
+    
+    # letters = ['k', 'R', 'D', '-', 'K', '$', ';', 'S', 'p', '’', '7', '.', '”', 'z', 'w', '_', 'B', 'Y', 'ê', '3', 'q', '“', 't', '"', 'V', 'M', '#', 'b', 'J', '%', '0', '\n', ')', 's', ':', 'N', 'r', 'a', '2', '8', 'x', 'I', 'A', 'G', 'e', 'E', 'C', 'g', '6', 'O', 'j', 'X', 'v', 'F', '4', 'T', '9', 'y', 'H', 'n', 'h', '1', '(', 'è', '!', '?', ',', 'W', ']', 'æ', 'c', 'é', 'U', 'o', '[', ' ', 'ô', 'f', 'Q', 'l', 'm', '/', 'd', '—', '*', 'L', 'u', 'P', "'", '5', 'i', '‘'],
+    
     model_in_height=32,
     model_in_width=400,
 )
@@ -36,7 +44,7 @@ augmentation_config = dict(
             "args": {
                 "deg": 10,
             },
-            "prob": 0.0
+            "prob": 0.1
         },
         {
             "transform": RandomBgColor,
@@ -54,6 +62,6 @@ augmentation_config = dict(
 )
 
 
-model_config = dict(
+model_config: Dict[str, Dict] = dict(
 
 )
