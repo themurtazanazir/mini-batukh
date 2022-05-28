@@ -19,12 +19,12 @@ class DataGenerator:
             self.words = f.read()
         self.words = self.words.strip()
         # self.words = self.words[:5]
-        self.words = self.words.replace(
-            "\n\n", "\n").replace("  ", " ").split()
+        self.words = set(self.words.replace(
+            "\n\n", "\n").replace("  ", " ").split())
+        self.words = sorted(list(self.words))
         print("w", len(self.words))
-        self.words = self.words[10000+1000:10000+1004]
-        # self.words = self.words[:10000]
-        # self.words = self.words[10001:10004]
+        # self.words = self.words[10000+1000:10000+1004]
+        self.words = self.words[:10000]
         self.fonts_path = fonts_path
         self.fonts = fonts
         self.font_sizes = font_sizes

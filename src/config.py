@@ -1,6 +1,7 @@
 
 from typing import Any, Dict, AnyStr
-from src.augmentations import RandomPerespective, RandomRotate, RandomBgColor
+from src.augmentations import RandomPerespective, RandomRotate, RandomBgColor,\
+    RandomResize
 
 data_config: Dict[str, Any] = dict(
     fonts_path="./fonts/",
@@ -13,7 +14,7 @@ data_config: Dict[str, Any] = dict(
         # "Gulmarg Nastaleeq-8.11.2013.ttf",
     ],
 
-    font_sizes=(32, 61),
+    font_sizes=(10, 61),
 
     length=(1, 2),
 
@@ -33,18 +34,27 @@ data_config: Dict[str, Any] = dict(
 augmentation_config = dict(
     augmentations=[
         {
+            "transform": RandomResize,
+            "args": {
+                "min_size_per": 0.5,
+                "max_size_per": 1.5,
+            },
+            "prob": 0.8,
+
+        },
+        {
             "transform": RandomPerespective,
             "args": {
-                "max_change": 25,
+                "max_change": 10,
             },
-            "prob": 0.0
+            "prob": 0.2
         },
         {
             "transform": RandomRotate,
             "args": {
                 "deg": 10,
             },
-            "prob": 0.1
+            "prob": 0.2
         },
         {
             "transform": RandomBgColor,
@@ -52,7 +62,7 @@ augmentation_config = dict(
                 "base_color_range": (195, 255),
                 "tolerance": 2,
             },
-            "prob": 1.0
+            "prob": 0.9
         },
 
 

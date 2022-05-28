@@ -18,14 +18,16 @@ trainer = pl.Trainer()
 
 def gen():
     im = Image.open("data/sample2.png")
+    w, h = im.size
+    im = im.crop((0, 20, w, int(0.9*h)))
     new_im = train_ds.datagen.resize_and_pad_to_model_size(im)
     new_im.save("output/sample2.png")
     image = ToTensor()(new_im).unsqueeze(0)
     text ="ghjk"
     yield (image-image.mean())/255, [text], [len(text)]
 
-# o = trainer.predict(model, train_dl, ckpt_path="/home/murtaza/personal/mini_batukh/lightning_logs/version_176/checkpoints/epoch=476-step=9999.ckpt")
-o = trainer.predict(model, gen(), ckpt_path="/home/murtaza/personal/mini_batukh/lightning_logs/version_255/checkpoints/epoch=19-step=99999.ckpt")
+o = trainer.predict(model, train_dl, ckpt_path="/media/murtaza/E/mini-batukh/lightning_logs/version_5/checkpoints/epoch=15-step=80000.ckpt")
+# o = trainer.predict(model, gen(), ckpt_path="/media/murtaza/E/mini-batukh/lightning_logs/version_5/checkpoints/epoch=15-step=80000.ckpt")
 # print(len(o))
 ctc_decoder = GreedyCTCDecoder(train_ds.datagen.idx2char)
 
