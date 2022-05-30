@@ -17,7 +17,7 @@ model = FinalModel(vocab_size=len(data_config["letters"])+1)
 trainer = pl.Trainer()
 
 def gen():
-    im = Image.open("data/sample2.png")
+    im = Image.open("data/sample3.png")
     w, h = im.size
     im = im.crop((0, 20, w, int(0.9*h)))
     new_im = train_ds.datagen.resize_and_pad_to_model_size(im)
@@ -26,8 +26,8 @@ def gen():
     text ="ghjk"
     yield (image-image.mean())/255, [text], [len(text)]
 
-o = trainer.predict(model, train_dl, ckpt_path="/media/murtaza/E/mini-batukh/lightning_logs/version_5/checkpoints/epoch=15-step=80000.ckpt")
-# o = trainer.predict(model, gen(), ckpt_path="/media/murtaza/E/mini-batukh/lightning_logs/version_5/checkpoints/epoch=15-step=80000.ckpt")
+# o = trainer.predict(model, train_dl, ckpt_path="/media/murtaza/E/mini-batukh/lightning_logs/version_5/checkpoints/epoch=15-step=80000.ckpt")
+o = trainer.predict(model, gen(), ckpt_path="/media/murtaza/E/mini-batukh/lightning_logs/version_22/checkpoints/epoch=50-step=255000.ckpt")
 # print(len(o))
 ctc_decoder = GreedyCTCDecoder(train_ds.datagen.idx2char)
 

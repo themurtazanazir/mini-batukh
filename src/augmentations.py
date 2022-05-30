@@ -155,6 +155,26 @@ class RandomResize(BaseTransform):
         img = img.resize((int(img.size[0]*size), int(img.size[1]*size)), Image.ANTIALIAS)
         return img, meta
 
+
+class RandomPad(BaseTransform):
+    def __init__(self, min_pad_size, max_pad_size):
+        super(RandomPad, self).__init__()
+        self.min_pad_size = min_pad_size
+        self.max_pad_size = max_pad_size
+    
+    def apply(self, img, meta={}):
+        pad_size = random.randint(self.min_pad_size, self.max_pad_size)
+        meta["RandomPad_pad_size"] = pad_size
+        img = self.add_margin(img, pad_size, (255, 255, 255, 0))
+        return img, meta
+
+    def add_margin(self, pil_img, pad_size, color):
+        width, height = pil_img.size
+        new_width = width + (2*pad_size)
+        new_height = height + (2*pad_size)
+        result = Image.new(pil_img.mode, (new_width, new_height), color)
+        result.paste(pil_img, (pad_size, pad_size))
+        return result
 ## TODO:
 # - Salt and Pepper
 # - Blurs (gaussian, simple, motion, median)

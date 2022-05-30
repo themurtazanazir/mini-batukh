@@ -196,7 +196,7 @@ class FinalModel(pl.LightningModule):
         return self.img_encoder(x)
 
     def configure_optimizers(self):
-        optimizer = torch.optim.Adam(self.parameters(), lr=1e-3) # 5e-4 for v_255 restarting
+        optimizer = torch.optim.Adam(self.parameters(), lr=1.5625e-05) # 5e-4 for v_255 restarting
         lr_scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, verbose=True, patience=5, factor=0.5)
         # return [optimizer], [lr_scheduler]
         return {

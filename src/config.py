@@ -1,6 +1,6 @@
 
 from typing import Any, Dict, AnyStr
-from src.augmentations import RandomPerespective, RandomRotate, RandomBgColor,\
+from src.augmentations import RandomPad, RandomPerespective, RandomRotate, RandomBgColor,\
     RandomResize
 
 data_config: Dict[str, Any] = dict(
@@ -36,11 +36,19 @@ augmentation_config = dict(
         {
             "transform": RandomResize,
             "args": {
-                "min_size_per": 0.5,
+                "min_size_per": 0.8,
                 "max_size_per": 1.5,
             },
-            "prob": 0.8,
+            "prob": 0.3,
 
+        },
+        {
+            "transform": RandomPad,
+            "args": {
+                "min_pad_size": 0,
+                "max_pad_size": 20,
+            },
+            "prob": 0.8,   
         },
         {
             "transform": RandomPerespective,
