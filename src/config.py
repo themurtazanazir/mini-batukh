@@ -1,7 +1,8 @@
 
 import random
 from typing import Any, Dict, AnyStr
-from src.augmentations import RandomPerespective, RandomRotate, RandomBgColor
+from src.augmentations import RandomPad, RandomPerespective, RandomRotate, RandomBgColor,\
+    RandomResize
 
 data_config: Dict[str, Any] = dict(
     fonts_path="./fonts/",
@@ -15,7 +16,7 @@ data_config: Dict[str, Any] = dict(
          'Adobe Arabic Regular.otf',
     ],
 
-    font_sizes=(32, 61),
+    font_sizes=(10, 61),
 
     length=(1, 6),
 
@@ -117,9 +118,26 @@ image_noises = iaa.Sometimes(0.6,
 augmentation_config = dict(
     augmentations=[
         {
+            "transform": RandomResize,
+            "args": {
+                "min_size_per": 0.8,
+                "max_size_per": 1.5,
+            },
+            "prob": 0.3,
+
+        },
+        {
+            "transform": RandomPad,
+            "args": {
+                "min_pad_size": 0,
+                "max_pad_size": 20,
+            },
+            "prob": 0.8,   
+        },
+        {
             "transform": RandomPerespective,
             "args": {
-                "max_change": 25,
+                "max_change": 10,
             },
             "prob": 0.4
         },
@@ -136,7 +154,7 @@ augmentation_config = dict(
                 "base_color_range": (195, 255),
                 "tolerance": 2,
             },
-            "prob": 1.0
+            "prob": 0.9
         },
 
 

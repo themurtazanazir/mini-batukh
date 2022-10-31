@@ -12,9 +12,9 @@ train_dl = train_ds(batch_size=2, shuffle=False)
 
 
 model = FinalModel(len(data_config["letters"])+1)
-# model = model.load_from_checkpoint("/home/murtaza/personal/mini_batukh/lightning_logs/version_184/checkpoints/epoch=30-step=774.ckpt", vocab_size=len(data_config["letters"])+1)
+model = model.load_from_checkpoint("/media/murtaza/E/mini-batukh/lightning_logs/version_20/checkpoints/epoch=19-step=100000.ckpt", vocab_size=len(data_config["letters"])+1)
 # model = model.load_from_checkpoint("/home/murtaza/personal/mini_batukh/lightning_logs/version_187/checkpoints/epoch=21-step=549.ckpt", vocab_size=len(data_config["letters"])+1)
 
-trainer = pl.Trainer(max_steps=100000, callbacks=[lr_monitor], log_every_n_steps=1)
+trainer = pl.Trainer(max_steps=700000, callbacks=[lr_monitor], log_every_n_steps=1)
 trainer.fit(model, train_dl)
 
