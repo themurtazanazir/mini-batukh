@@ -4,7 +4,7 @@ import numpy as np
 import random
 
 import torch
-from src.augmentations import RandomBgColor
+from src.augmentations import RandomBgColor, RandomPerespective
 from src.augmentations import Compose
 from torch.utils.data import DataLoader, Dataset
 from torchvision.transforms import ToTensor
@@ -13,36 +13,41 @@ from torch.nn.utils.rnn import pad_sequence
 class DataGenerator:
 
     def __init__(self, fonts_path, fonts, font_sizes, words_path, length,
-                 transforms, letters, model_in_width, model_in_height):
+                 aff_aug, img_aug, letters, model_in_width, model_in_height):
+        self.letters = letters
 
         with open(words_path) as f:
-            self.words = f.read()
-        self.words = self.words.strip()
-        # self.words = self.words[:5]
-        self.words = self.words.replace(
-            "\n\n", "\n").replace("  ", " ").split()
-        print("w", len(self.words))
-        self.words = self.words[10000+1000:10000+1004]
-        # self.words = self.words[:10000]
-        # self.words = self.words[10001:10004]
+            data = f.read()
+
+        for char in data:
+            if char not in self.letters:
+                data = data.replace(char, '')
+        
+        self.words = data.strip()
+        self.words = self.words.replace("\n", " ").split()
         self.fonts_path = fonts_path
         self.fonts = fonts
         self.font_sizes = font_sizes
         self.length = length
-        self.letters = letters
-        # self.SOS = "<SOS>"
-        # self.EOS = "<EOS>"
-        # self.letters.extend([self.SOS, self.EOS])
 
         self.idx2char = dict(enumerate(self.letters, 1))
         self.char2idx = {v: k for k, v in self.idx2char.items()}
 
         self.OOV_idx = max(self.idx2char.keys())+1
 
-        self.transforms = transforms
+        self.aff_aug = aff_aug
+        self.img_aug = img_aug
 
         self.model_in_width = model_in_width
         self.model_in_height = model_in_height
+
+
+    def encode_text(self, text):
+        text = [self.char2idx.get(char, self.OOV_idx) for char in text]
+        return text
+
+    def decode_text(self, text):
+        return "".join([self.idx2char.get(char, '<OOV>') for char in text])
 
     def get_random_font(self, meta={}):
 
@@ -63,7 +68,7 @@ class DataGenerator:
 
         # TODO: Add more types of random texts with different probability.
         text = " ".join([random.choice(self.words)
-                        for i in range(length)])
+                        for _ in range(length)])
         meta["text"] = text
         return text, meta
 
@@ -77,7 +82,7 @@ class DataGenerator:
         vt, hz = np.where((img < 255).all(axis=-1))
 
         x0, y0, x1, y1 = (hz.min(), vt.min(), hz.max(), vt.max())
-        padding_x = padding_per*(x1-x0)
+        padding_x = padding_per*(y1-y0)
         padding_y = padding_per*(y1-y0)
 
         x0 = max(0, x0-padding_x)
@@ -114,7 +119,7 @@ class DataGenerator:
                   font=font, fill=text_color, color=text_color, direction='rtl')
         draw = ImageDraw.Draw(image)
 
-        padding_per = random.random()*0.05
+        padding_per = random.random()*0.2+0.02
         meta["padding_per"] = padding_per
 
         image = self.crop_tight(image, padding_per)
@@ -131,6 +136,8 @@ class DataGenerator:
         text = ''
         while len(text)< 5:
             text, meta = self.generate_text(length, meta)
+
+        text = text[:20]
         # print("text is", text, len(text))
         # print(text)
         image, meta = self.draw_image(font, text, meta)
@@ -148,18 +155,21 @@ class DataGenerator:
         image = image[:, :self.model_in_width]  # crop if longer
         h, w = image.shape[:2]
         image = np.pad(image, ((0, 0), (0, self.model_in_width-w), (0, 0)),
-                       constant_values=255)
+                       constant_values=0)
         return Image.fromarray(image)
 
     def __getitem__(self, idx):
         image, text, meta = self.generate_clean_sample()
+        image, meta = RandomPerespective(max_change=25)(image, meta={})
+        image = self.aff_aug(np.array(image))
+        image, meta = RandomBgColor(base_color_range= (195, 255), 
+        tolerance=2)(image, meta=meta)
         # print(idx, text)
-        image, meta = self.transforms(image, meta)
+        image = Image.fromarray(self.img_aug(np.array(image)))
         image = image.convert('RGB')
-        image = self.resize_and_pad_to_model_size(image)
+        # image = self.resize_and_pad_to_model_size(image)
         # encoded_text = [self.char2idx[self.SOS]]+[self.char2idx.get(i, self.OOV_idx) for i in text]+[self.char2idx[self.EOS]]
-        encoded_text = [self.char2idx.get(i, self.OOV_idx) for i in text]
-        return image, torch.tensor(encoded_text), meta
+        return image, text, meta
 
     def __len__(self):
         return len(self.words)
@@ -167,10 +177,10 @@ class DataGenerator:
 
 class MyDataset(Dataset):
 
-    def __init__(self, data_config, augmentation_config):
-        self.img_transform = self.compose_aug(augmentation_config)
+    def __init__(self, data_config, aff_aug, img_aug):
+        # self.img_transform = self.compose_aug(augmentation_config)
         self.datagen = DataGenerator(
-            **data_config, transforms=self.img_transform)
+            **data_config, aff_aug=aff_aug, img_aug=img_aug)
 
     def compose_aug(self, augmentation_config):
         transforms = [aug["transform"](**aug["args"])
@@ -181,7 +191,9 @@ class MyDataset(Dataset):
 
     def __getitem__(self, idx):
         image, text, meta = self.datagen[idx]
-        image.save(f"output/{idx}.png")
+        image = self.datagen.resize_and_pad_to_model_size(image)
+        text = self.datagen.encode_text(text)
+        text = torch.LongTensor(text)
         image = ToTensor()(image)
         return (image-image.mean())/255, text, len(text)
 

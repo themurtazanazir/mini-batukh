@@ -1,4 +1,5 @@
 
+import random
 from typing import Any, Dict, AnyStr
 from src.augmentations import RandomPerespective, RandomRotate, RandomBgColor
 
@@ -8,27 +9,110 @@ data_config: Dict[str, Any] = dict(
     # words_path="./data/input_data_eng.txt",
 
     fonts=[
-        # "ARIBL0.ttf",
-        "ScheherazadeNew-Regular.ttf",
-        # "Gulmarg Nastaleeq-8.11.2013.ttf",
+        'NotoNastaliqUrdu-Regular.ttf',
+         'ScheherazadeNew-Regular.ttf',
+         'Gulmarg Nastaleeq-8.11.2013.ttf',
+         'Adobe Arabic Regular.otf',
     ],
 
     font_sizes=(32, 61),
 
-    length=(1, 2),
+    length=(1, 6),
 
-    letters=['ص', '(', 'ژ', 'ِ', 'ۄ', 'ٍ', 'ز', 'ڑ', 'ء', 'ة', '¿', '’', ':', 'س', 'ٛ', 'ق', '۵', 'ٸ', ' ', 'ج', 'غ', '&', 'ێ', '‘', 'م', '۰', '۲', 'ر', '٠', 'پ', '#', 'ً', 'ۯ', 'ع', 'ذ', '۳', 'ا', 'ﺅ', 'خ', 'ث', '/', '۱', 'ٚ', 'ط', '"', '٘', '۹', 'ٲ', '۪', 'ح', 'ۂ', 'ہ', 'ٰ', '”', 'ھ', 'ٗ', 'ے', '۶',
-             'ٓ', "'", 'ب', 'ٔ', 'ؑ', 'و', '\ufeff', '.', 'ی', 'ٹ', 'ل', 'ۆ', '\x81', 'ۭ', 'ّ', 'ۅ', 'د', ')', 'ؐ', 'ٖ', 'ُ', '>', 'ت', 'ض', '۸', ',', 'ن', 'ئ', 'ظ', 'ں', '،', 'ؓ', 'ڈ', '۔', 'ف', '۴', 'گ', '\xad', 'ؒ', 'ۍ', 'ـ', '؟', 'ک', '٭', 'آ', 'ٮ', '\u200e', 'ٕ', '̡', '!', 'ش', 'َ', '۷', 'ؔ', 'چ', '؛', '='],
+    letters=[
+        'ا',
+        'ب',
+        'پ',
+        'ت',
+        'ٹ',
+        'ث',  
+        'ج',
+        'چ',
+        'ح',
+        'خ',
+        'د',
+        'ڈ',
+        'ذ',
+        'ر',
+        'ڑ',
+        'ز',
+        'ژ',
+        'س',
+        'ش',
+        'ص',
+        'ض',
+        'ط',
+        'ظ',
+        'ع', 
+        'غ',
+        'ف',
+        'ق',
+        'ک',
+        'گ',
+        'ل',
+        'م',
+        'ن',
+        'ں',
+        'و',
+        'ۆ',
+        # 'ۄ',
+        'ھ',
+        'ء',
+        'ی',
+        # 'ؠ',
+        'ے',
+        'آ',
+         'ِ',
+        ' ',
+        'ٲ',
+        'ٔ',
+        'ؑ',
+        'ٕ',
+        'َ', ],
+        
     
     
-    # letters = ['M', 'n', 'a', ' ', 'm', 'i', 's', 'y', 'd', 'e'],
-    
+
     
     # letters = ['k', 'R', 'D', '-', 'K', '$', ';', 'S', 'p', '’', '7', '.', '”', 'z', 'w', '_', 'B', 'Y', 'ê', '3', 'q', '“', 't', '"', 'V', 'M', '#', 'b', 'J', '%', '0', '\n', ')', 's', ':', 'N', 'r', 'a', '2', '8', 'x', 'I', 'A', 'G', 'e', 'E', 'C', 'g', '6', 'O', 'j', 'X', 'v', 'F', '4', 'T', '9', 'y', 'H', 'n', 'h', '1', '(', 'è', '!', '?', ',', 'W', ']', 'æ', 'c', 'é', 'U', 'o', '[', ' ', 'ô', 'f', 'Q', 'l', 'm', '/', 'd', '—', '*', 'L', 'u', 'P', "'", '5', 'i', '‘'],
     
     model_in_height=32,
     model_in_width=400,
 )
+
+from imgaug import augmenters as iaa
+
+aff_aug = iaa.Sometimes(0.85,
+                        then_list=iaa.Sequential(
+                            [
+                                iaa.Sometimes(0.7, iaa.Affine(scale=(0.75, 0.75), seed=random.randint(0, 1000),
+                                                              translate_percent={"x": (-0.12, 0.12), "y": (-0.05, 0.05)}),
+                                              seed=random.randint(0, 1000)),
+                                iaa.Sometimes(0.3, iaa.Affine(scale=(0.6, 1), seed=random.randint(0, 1000)),
+                                              seed=random.randint(0, 1000)),
+                                iaa.Sometimes(0.15, iaa.ShearX((-20, 20), seed=random.randint(0, 1000)),
+                                              seed=random.randint(0, 1000)),
+                                iaa.Sometimes(0.5, iaa.Affine(rotate=(-3, 3), seed=random.randint(0, 1000), fit_output=True),
+                                              seed=random.randint(0, 1000))
+                            ]))
+
+image_noises = iaa.Sometimes(0.6,
+                             then_list=iaa.Sequential([
+                                 iaa.Sometimes(0.3,
+                                               iaa.OneOf([iaa.GaussianBlur(sigma=(0.4, 0.8), seed=random.randint(0, 1000)),
+                                                          iaa.MotionBlur(k=3, seed=random.randint(0, 1000))])
+                                               ),
+                                 iaa.Sometimes(0.3,
+                                               iaa.OneOf(
+                                                   [iaa.Salt(p=(0.05, 0.125), seed=random.randint(0, 1000)),
+                                                       iaa.Pepper(p=(0.05, 0.125),
+                                                                  seed=random.randint(0, 1000)),
+                                                    iaa.SaltAndPepper(p=(0.05, 0.125), seed=random.randint(0, 1000))],)),
+                                 iaa.Sometimes(0.3, iaa.Dropout(
+                                     p=(0.05, 0.125), seed=random.randint(0, 1000)))
+                             ]
+                             ))
+
 
 augmentation_config = dict(
     augmentations=[
@@ -37,14 +121,14 @@ augmentation_config = dict(
             "args": {
                 "max_change": 25,
             },
-            "prob": 0.0
+            "prob": 0.4
         },
         {
             "transform": RandomRotate,
             "args": {
                 "deg": 10,
             },
-            "prob": 0.1
+            "prob": 0.4
         },
         {
             "transform": RandomBgColor,

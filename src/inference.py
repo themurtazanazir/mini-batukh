@@ -6,8 +6,8 @@ from src.utils import GreedyCTCDecoder
 from PIL import Image
 from torchvision.transforms import ToTensor
 
-train_ds = MyDataset(data_config, augmentation_config)
-train_dl = train_ds(batch_size=1, shuffle=True)
+train_ds = MyDataset(data_config, img_aug=lambda x:x, aff_aug=lambda x:x)
+# train_dl = train_ds(batch_size=1, shuffle=True)
 
 
 model = FinalModel(vocab_size=len(data_config["letters"])+1)
@@ -17,15 +17,15 @@ model = FinalModel(vocab_size=len(data_config["letters"])+1)
 trainer = pl.Trainer()
 
 def gen():
-    im = Image.open("data/sample2.png")
+    im = Image.open("data/sample3.png")
     new_im = train_ds.datagen.resize_and_pad_to_model_size(im)
-    new_im.save("output/sample2.png")
+    new_im.save("output/sample3.png")
     image = ToTensor()(new_im).unsqueeze(0)
     text ="ghjk"
     yield (image-image.mean())/255, [text], [len(text)]
 
 # o = trainer.predict(model, train_dl, ckpt_path="/home/murtaza/personal/mini_batukh/lightning_logs/version_176/checkpoints/epoch=476-step=9999.ckpt")
-o = trainer.predict(model, gen(), ckpt_path="/home/murtaza/personal/mini_batukh/lightning_logs/version_255/checkpoints/epoch=19-step=99999.ckpt")
+o = trainer.predict(model, gen(), ckpt_path="/home/murtaza/personal/mini_batukh/lightning_logs/version_262/checkpoints/epoch=19-step=55519.ckpt")
 # print(len(o))
 ctc_decoder = GreedyCTCDecoder(train_ds.datagen.idx2char)
 
